@@ -1,0 +1,12 @@
+pandas
+numpy
+matplotlib
+seaborn
+re
+nltk
+textblob
+unidecode
+wordcloud
+sklearn
+tensorflow
+gensim
