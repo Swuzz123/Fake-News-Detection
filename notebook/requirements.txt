@@ -10,3 +10,7 @@ wordcloud
 sklearn
 tensorflow
 gensim
+transformers
+torch
+tqdm
+os
