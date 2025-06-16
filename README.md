@@ -1,4 +1,4 @@
-# Fake sNewss Detection
+# Fake News Detection
 ## Table of Contents
 - [Introduction](#introduction)
   - [Data Sources](#data-sources)
@@ -46,11 +46,11 @@ pip install -r requirments.txt
 
 ## Overview
 ### Data Preprocessing
-#### 1. Remove unneccessary columns and Label for the data
+#### 1. Removing unneccessary columns and Labeling for the data
 - There was a column `Unnamed: 0` that did not serve for any further purpose, so I decided to delete it.
 - The original dataset had not been labeled as **Fake** or **Real**, so I labeled for the dataset with **Fake News** being 0 and **Real News** being 1
 
-#### 2. Check missing and duplicated values
+#### 2. Checking missing and duplicated values
 After checking missing values, I noticed that having **29 missing values**. Furthermore, I analysized clearly texts, which maybe have some cases relating **blank space**, can not be understood by computer so I wrote an extra function to check the texts in **blank space** form and they are counted as missing values.
 
 ```python
@@ -125,9 +125,33 @@ I examined whether words like “war” and “election” in **Fake news** appe
 ![contextual_analysis](https://github.com/Swuzz123/Fake-News-Detection/blob/master/images/The%20number%20of%20accusatory%20(False)%20statements%20VS%20the%20official%20report%20(True).png)
 
 ### Model Building and Training
+#### 1. Build with Machine Learning Algorithms
+**Step 1: Selecting the best N-gram range**<br>
+In this step, I selected the optimal N-gram range (from unigrams to trigrams) to prepare the data for vectorization using the TF-IDF Vectorizer in the following stages. The goal was to choose the N-gram range that yielded the highest F1-score, ensuring that the extracted features were suitable for text representation in the Fake News Classification task. The results showed that the best-performing N-gram range was bigrams (1, 2).
 
+![best_n_gram_range](./images/Best_N_gram_range.png)
 
+**Step 2: Vectorizing Text with TF-IDF and Integrating Semantic Features into the Training Set** <br>
+In this step, I used **TF-IDF (Term Frequency–Inverse Document Frequency)** as the main vectorization technique to convert text into a structured numerical format suitable for machine learning algorithms. In addition to TF-IDF, I incorporated other semantic-based features to capture different linguistic and contextual characteristics of the text. Specifically, I added the following three additional semantic features:
+- **Average Sentiment Polarity:** This score reflects the overall emotional tone of the text, classifying it as positive, neutral, or negative. Sentiment analysis is especially important in detecting fake news, which often exploits strong emotional triggers to mislead readers. The polarity score provides valuable insights into the emotional intent of the content.
 
+- **Readability Score (Flesch–Kincaid):** This metric evaluates the complexity of a text. Texts that are overly simplistic or excessively complex may signal fake news. The score estimates how easy a passage is to read based on sentence length and word complexity, helping to identify content designed to mislead or manipulate through overly technical or overly simplistic language.
+
+- **Thematic Diversity:** This feature analyzes the variety of topics covered within a text to better understand the spread and focus of its content. Low thematic diversity may indicate fake news, which often recycles a narrow set of biased or emotionally charged topics.
+
+![formula_3_semantic_features](./images/Formula_3_semantic_features.png)
+
+After applying TF-IDF vectorization, the resulting sparse matrix is already normalized and its values lie within the range [0,1]. However, the three additional semantic features are not on the same scale:
+
+- **Sentiment Polarity:** Values can be both negative and positive, and typically fall within a small numerical range.
+
+- **Readability Score:** The values can be significantly higher than those from the TF-IDF matrix.
+
+- **LDA Topic Vector:** These are probabilities, so they naturally lie between 0 and 1, but may still need scaling to match the magnitude of TF-IDF.
+
+To ensure consistency and effective integration with the TF-IDF features, these semantic features should be rescaled or normalized before being combined into the final feature set.
+
+**Step 3: Make a Pipeline for training different models** <br>
 
 
 
