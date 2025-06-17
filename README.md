@@ -14,8 +14,8 @@
     - [1. Build with Machine Learning Algorithms](build-with-machine-learning-algorithms)
     - [2. Build with Word2Vec and LSTM](#build-with-word2vec-lstm)
     - [3. Fine tuning with BERT](#fine-tuning-with-bert)
-  - [Performance Evaluation](#performance-evaluation)
   - [Model Deployment](#model-deployment)
+  - [Conclusion](#conclusion)
  
 ## Introduction
 The widespread dissemination of fake news and propaganda presents serious societal risks, including the erosion of public trust, political polarization, manipulation of elections, and the spread of harmful misinformation during crises such as pandemics or conflicts.
@@ -219,4 +219,100 @@ maxlen = 700
 X = pad_sequences(X, maxlen = maxlen)
 ```
 
-**Step 3: Generate mapping matrix from Word2Vec (Embedding Matrix)**<br>
+**Step 3: Constructing Embedding Matrix for Tokenized Vocabulary (Embedding Matrix)**<br>
+
+In this step, I used a pre-trained Word2Vec model to build the embedding matrix, where each row corresponds to a word in the tokenizer's vocabulary and contains its associated semantic embedding vector. This matrix was later used to initialize the embedding layer in deep learning model, allowing them to start with rich, pre-learned word representations instead of learning from scratch.
+
+```python
+# Function to create weight maxtrix from Word2Vec model
+def get_weight_matrix(model, vocab):
+    # Total vocab size + 0 for unknown words
+    vocab_size = len(vocab) + 1
+    
+    # Define weight matrix dimensions with all 0
+    weight_matrix = np.zeros((vocab_size, EMBEDDING_DIM))
+    
+    # Step vocab, store vectors using the Tokenizer's integer mapping
+    for word, i in vocab.items():
+        if word in model.wv:
+            weight_matrix[i] = model.wv[word]
+        
+    return weight_matrix
+
+embedding_vectors = get_weight_matrix(w2v_model, word_index)
+```
+
+**Step 4: Building and Compiling the LSTM Model with Pre-trained Embedding Layer**<br>
+
+In this step, I built a sequential LSTM model for binary text classification. The model began with a non-trainable embedding layer, which used the pre-trained Word2Vec embedding matrix to represent each word as a dense vector. I then added an LSTM layer with 128 units to capture sequential dependencies in the text, followed by a dense output layer with a sigmoid activation function for binary classification. The model was compiled using the Adam optimizer and binary cross-entropy loss function, and was evaluated using accuracy as the performance metric.
+
+```python
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Embedding, LSTM, Dense
+
+model = Sequential()
+
+# Non-trainable embedding layer
+model.add(Embedding(input_dim = vocab_size, output_dim = EMBEDDING_DIM, weights = [embedding_vectors], input_length = maxlen, trainable = False))
+
+# LSTM 
+model.add(LSTM(128, return_sequences = False))
+model.add(Dense(1, activation = 'sigmoid'))
+
+model.compile(loss = 'binary_crossentropy',
+              optimizer = 'adam',
+              metrics = ['accuracy'])
+
+model.build(input_shape=(None, maxlen))
+
+model.summary()
+```
+
+After completing the training step, here are the results I obtained.
+
+![accuracy_LSTM](./images/Accuracy_Word2Vec_LSTM.png)
+
+#### 3. Fine tuning with BERT
+
+In this step, I performed fine-tuning using a pre-trained BERT model. Since BERT is a large and computationally intensive model, training it on a CPU would be extremely slow. Therefore, I recommend running the training process on Kaggle or Google Colab, which both offer free GPU support, or on your own machine if it has a GPU available. If you're interested in the full implementation details, you can download the notebook from the notebook https://github.com/Swuzz123/Fake-News-Detection/blob/master/notebook/fine_tuning_with_BERT_model.ipynb provided and try it yourself. I have included clear explanations for every step, so you can better understand how BERT was fine-tuned for the Fake News Classification task.
+
+### Model Deployment
+
+*Update soon!*
+
+### Conclusion
+
+#### 1. Traditional Machine Learning Models (e.g., SVM, Logistic Regression):
+
+After preprocessing and feature extraction (e.g., TF-IDF), these models performed well on balanced and cleaned datasets. Among them, Support Vector Machine (SVM) achieved the best and most stable performance with **94% accuracy**.
+
+- Strengths: Fast training and inference, simple implementation, good performance on moderately sized datasets.
+
+- Weaknesses: Unable to capture word semantics; limited adaptability to evolving fake news patterns; performance may drop with noisy or biased data.
+
+#### 2. Word2Vec + LSTM Model:
+
+Combining Word2Vec embeddings with LSTM allowed the model to capture long-term dependencies and subtle patterns. It achieved **96% accuracy** on the training set.
+
+- Strengths: Captures contextual patterns and semantic meaning; effective on longer, more complex texts.
+
+- Weaknesses: Resource-intensive; requires careful hyperparameter tuning; risk of overfitting without sufficient diverse data.
+
+#### 3. Fine-Tuned BERT Model:
+
+Leveraging the power of Transformers and contextualized embeddings, the fine-tuned BERT model significantly outperformed the other methods, achieving up to **99% accuracy**.
+
+- Strengths: Superior understanding of language context and semantics; handles nuanced expressions and long texts well; pre-trained knowledge makes it robust.
+
+- Weaknesses: High computational cost; requires GPU; complex tuning; risk of overfitting on small or biased datasets.
+
+## Reference
+
+https://memart.vn/tin-tuc/blog/tat-tan-tat-ve-lda-la-gi-va-ung-dung-trong-bai-toan-machine-learning-vi-cb.html
+https://www.mdpi.com/2078-2489/16/3/189
+https://www.sfu.ca/~mtaboada/docs/publications/Asr_Mokhtari_Taboada.pdf
+https://npl0204.github.io/projects/Fake-News-Detection/
+https://towardsdatascience.com/leveraging-n-grams-to-extract-context-from-text-bdc576b47049/
+https://www.sciencedirect.com/org/science/article/pii/S1546221823006380
+https://www.researchgate.net/publication/360057865_Fake_news_detection_using_deep_learning
+https://github.com/piskvorky/gensim/wiki/Migrating-from-Gensim-3.x-to-4
