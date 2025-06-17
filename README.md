@@ -127,11 +127,13 @@ I examined whether words like “war” and “election” in **Fake news** appe
 ### Model Building and Training
 #### 1. Build with Machine Learning Algorithms
 **Step 1: Selecting the best N-gram range**<br>
+
 In this step, I selected the optimal N-gram range (from unigrams to trigrams) to prepare the data for vectorization using the TF-IDF Vectorizer in the following stages. The goal was to choose the N-gram range that yielded the highest F1-score, ensuring that the extracted features were suitable for text representation in the Fake News Classification task. The results showed that the best-performing N-gram range was bigrams (1, 2).
 
 ![best_n_gram_range](./images/Best_N_gram_range.png)
 
 **Step 2: Vectorizing Text with TF-IDF and Integrating Semantic Features into the Training Set** <br>
+
 In this step, I used **TF-IDF (Term Frequency–Inverse Document Frequency)** as the main vectorization technique to convert text into a structured numerical format suitable for machine learning algorithms. In addition to TF-IDF, I incorporated other semantic-based features to capture different linguistic and contextual characteristics of the text. Specifically, I added the following three additional semantic features:
 - **Average Sentiment Polarity:** This score reflects the overall emotional tone of the text, classifying it as positive, neutral, or negative. Sentiment analysis is especially important in detecting fake news, which often exploits strong emotional triggers to mislead readers. The polarity score provides valuable insights into the emotional intent of the content.
 
@@ -151,9 +153,70 @@ After applying TF-IDF vectorization, the resulting sparse matrix is already norm
 
 To ensure consistency and effective integration with the TF-IDF features, these semantic features should be rescaled or normalized before being combined into the final feature set.
 
-**Step 3: Make a Pipeline for training different models** <br>
+**Step 3: Build a Unified Training Pipeline for Multiple Models** <br>
 
+In this step, I created a unified pipeline that allows easy switching between different machine learning models. With this setup, I can simply call a function and specify the model name I want to test, and the pipeline will handle all the necessary preprocessing, training, and evaluation steps automatically.
 
+```python
+from sklearn.metrics import classification_report
+from sklearn.metrics import f1_score, accuracy_score
 
+# Make a list to store all the names of model training and accuracy
+models = []
+accuracy = []
+f1_train = []
+f1_test = []
 
+# Build model function
+def build_model(ml_model, X_train, y_train, X_test, y_test, accuracy, f1_train, f1_test):
+    # Fit the model
+    ml_model.fit(X_train, y_train)
+    
+    # Calculate scores 
+    y_pred = ml_model.predict(X_test)
+    accuracy.append(accuracy_score(y_test, y_pred))
+    f1_test.append(f1_score(y_test, y_pred))
+    f1_train.append(f1_score(y_train, ml_model.predict(X_train)))
+    
+    # Print classification report
+    print(classification_report(y_test, y_pred))
+```
 
+This is the result after training and Support Vector Machine (SVM) is the model with best performance as well as the most stable among 4 remaining models
+
+![training_result](./images/Training_result.png)
+
+#### 2. Build with Word2Vec and LSTM
+**Step 1: Generating Word Embeddings with Word2Vec**<br>
+
+In this step, I fed the preprocessed text data into the Word2Vec model to learn vector representations (embeddings) for each word. The Word2Vec model captures semantic relationships between words by placing those with similar contexts closer together in the vector space. This embedding can later be used to enhance the input features for downstream classification tasks.
+
+```python 
+import gensim 
+
+EMBEDDING_DIM = 100
+w2v_model = gensim.models.Word2Vec(sentences = X, vector_size = EMBEDDING_DIM, window = 10, min_count = 1)
+```
+
+**Step 2: Text Tokenization and Sequence Padding**<br>
+
+In this step, each sentence was converted into a sequence of integer indices corresponding to words in the vocabulary built from the training data. Then, padding was applied to standardize the length of all sequences to a fixed size `(maxlen)`. If a sentence was shorter than `maxlen`, zeros were appended to the end (post-padding). If it was longer, the extra tokens at the end were truncated. This normalization step was necessary to ensure that all input data had a uniform shape, which is required for feeding into Deep Learning models.
+
+```python 
+import tensorflow as tf
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+
+# Tokenization
+tokenizer = Tokenizer(num_words = 8000, oov_token = '<OOV>')
+tokenizer.fit_on_texts(X)
+
+X = tokenizer.texts_to_sequences(X)
+
+# Padding
+maxlen = 700
+
+X = pad_sequences(X, maxlen = maxlen)
+```
+
+**Step 3: Generate mapping matrix from Word2Vec (Embedding Matrix)**<br>
